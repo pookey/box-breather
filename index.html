@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Box Breathing</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: hsl(0, 0%, 4%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      transition: background-color 0.3s ease;
+      overflow: hidden;
+    }
+
+    .container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .box-container {
+      position: relative;
+      width: 280px;
+      height: 280px;
+    }
+
+    .box {
+      width: 100%;
+      height: 100%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+    }
+
+    .chaser {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+      transition: none;
+    }
+
+    .phase-label {
+      position: absolute;
+      bottom: -35px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .settings {
+      position: fixed;
+      bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      opacity: 0.4;
+      transition: opacity 0.3s ease;
+    }
+
+    .settings:hover {
+      opacity: 1;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 13px;
+    }
+
+    .setting-row label {
+      min-width: 120px;
+    }
+
+    input[type="range"] {
+      width: 120px;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+    }
+
+    .duration-value {
+      min-width: 30px;
+      text-align: center;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="box-container">
+      <div class="box"></div>
+      <div class="chaser"></div>
+      <div class="phase-label">click to start</div>
+    </div>
+  </div>
+
+  <div class="settings">
+    <div class="setting-row">
+      <label>Phase duration</label>
+      <input type="range" id="duration" min="3" max="6" step="0.5" value="4">
+      <span class="duration-value" id="duration-value">4s</span>
+    </div>
+    <div class="setting-row">
+      <label>Brightness pulse</label>
+      <input type="range" id="brightness" min="0" max="100" step="5" value="30">
+    </div>
+    <div class="setting-row">
+      <label>Click volume</label>
+      <input type="range" id="volume" min="0" max="100" step="5" value="50">
+    </div>
+  </div>
+
+  <script>
+    const chaser = document.querySelector('.chaser');
+    const phaseLabel = document.querySelector('.phase-label');
+    const durationSlider = document.getElementById('duration');
+    const durationValue = document.getElementById('duration-value');
+    const brightnessSlider = document.getElementById('brightness');
+    const volumeSlider = document.getElementById('volume');
+    const boxContainer = document.querySelector('.box-container');
+
+    let duration = 4;
+    let brightnessIntensity = 30;
+    let volume = 0.5;
+    let isRunning = false;
+    let animationId = null;
+    let lastPhaseIndex = -1;
+    let audioContext = null;
+
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playClick() {
+      if (!audioContext || volume === 0) return;
+
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(volume * 0.3, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.08);
+    }
+
+    const phases = [
+      { name: 'inhale', startX: 0, startY: 0, endX: 0, endY: 100 },
+      { name: 'hold', startX: 0, startY: 100, endX: 100, endY: 100 },
+      { name: 'exhale', startX: 100, startY: 100, endX: 100, endY: 0 },
+      { name: 'hold', startX: 100, startY: 0, endX: 0, endY: 0 }
+    ];
+
+    function setPosition(xPercent, yPercent) {
+      const box = document.querySelector('.box');
+      const rect = box.getBoundingClientRect();
+      chaser.style.left = `${xPercent}%`;
+      chaser.style.top = `${yPercent}%`;
+    }
+
+    function updateBackground(phaseIndex, progress) {
+      const maxBrightness = brightnessIntensity;
+      const minBrightness = 4;
+
+      let brightness;
+      if (phaseIndex === 0) {
+        // Inhale: dark to bright
+        brightness = minBrightness + (progress * (maxBrightness - minBrightness));
+      } else if (phaseIndex === 1) {
+        // Hold after inhale: stay bright
+        brightness = maxBrightness;
+      } else if (phaseIndex === 2) {
+        // Exhale: bright to dark
+        brightness = maxBrightness - (progress * (maxBrightness - minBrightness));
+      } else {
+        // Hold after exhale: stay dark
+        brightness = minBrightness;
+      }
+
+      document.body.style.backgroundColor = `hsl(0, 0%, ${brightness}%)`;
+    }
+
+    function easeInOutSine(t) {
+      return -(Math.cos(Math.PI * t) - 1) / 2;
+    }
+
+    function animate() {
+      if (!isRunning) return;
+
+      const totalCycleDuration = duration * 4 * 1000;
+      const phaseDuration = duration * 1000;
+      const now = performance.now();
+      const cycleProgress = (now % totalCycleDuration) / totalCycleDuration;
+      const phaseIndex = Math.floor(cycleProgress * 4);
+      const phaseProgress = (cycleProgress * 4) % 1;
+
+      const phase = phases[phaseIndex];
+      const easedProgress = easeInOutSine(phaseProgress);
+
+      const x = phase.startX + (phase.endX - phase.startX) * easedProgress;
+      const y = phase.startY + (phase.endY - phase.startY) * easedProgress;
+
+      setPosition(x, y);
+      phaseLabel.textContent = phase.name;
+      updateBackground(phaseIndex, phaseProgress);
+
+      if (phaseIndex !== lastPhaseIndex) {
+        playClick();
+        lastPhaseIndex = phaseIndex;
+      }
+
+      animationId = requestAnimationFrame(animate);
+    }
+
+    function start() {
+      if (isRunning) {
+        isRunning = false;
+        cancelAnimationFrame(animationId);
+        phaseLabel.textContent = 'click to start';
+        document.body.style.backgroundColor = 'hsl(0, 0%, 4%)';
+        setPosition(0, 0);
+        lastPhaseIndex = -1;
+        return;
+      }
+
+      initAudio();
+      lastPhaseIndex = -1;
+      isRunning = true;
+      animate();
+    }
+
+    durationSlider.addEventListener('input', (e) => {
+      duration = parseFloat(e.target.value);
+      durationValue.textContent = `${duration}s`;
+    });
+
+    brightnessSlider.addEventListener('input', (e) => {
+      brightnessIntensity = parseFloat(e.target.value);
+    });
+
+    volumeSlider.addEventListener('input', (e) => {
+      volume = parseFloat(e.target.value) / 100;
+    });
+
+    boxContainer.addEventListener('click', start);
+
+    setPosition(0, 0);
+  </script>
+</body>
+</html>
