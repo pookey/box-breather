@@ -215,6 +215,69 @@
       text-align: left;
       font-variant-numeric: tabular-nums;
     }
+
+    /* Info Toggle */
+    .info-toggle {
+      position: fixed;
+      bottom: 28px;
+      left: 28px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.25;
+      transition: opacity 0.3s ease;
+    }
+
+    .info-toggle:hover {
+      opacity: 0.6;
+    }
+
+    .info-toggle.active {
+      opacity: 0.5;
+    }
+
+    .info-toggle svg {
+      width: 18px;
+      height: 18px;
+      stroke: white;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    /* Info Panel */
+    .info-panel {
+      position: fixed;
+      bottom: 28px;
+      left: 70px;
+      max-width: 280px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-10px);
+      transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease,
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .info-panel.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+    }
+
+    .info-panel p {
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.7;
+      letter-spacing: 0.02em;
+    }
+
+    .info-panel p + p {
+      margin-top: 12px;
+    }
   </style>
 </head>
 <body>
@@ -224,6 +287,19 @@
       <div class="chaser"></div>
       <div class="phase-label">begin</div>
     </div>
+  </div>
+
+  <div class="info-toggle" id="info-toggle">
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="16" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+    </svg>
+  </div>
+
+  <div class="info-panel" id="info-panel">
+    <p>Box breathing is a simple technique used by everyone from Navy SEALs to athletes to calm the nervous system and sharpen focus.</p>
+    <p>Equal intervals of inhaling, holding, exhaling, and holding again activate the parasympathetic response, lowering stress hormones and bringing clarity to a scattered mind.</p>
   </div>
 
   <div class="settings-toggle" id="settings-toggle">
@@ -259,6 +335,8 @@
     const boxContainer = document.querySelector('.box-container');
     const settingsToggle = document.getElementById('settings-toggle');
     const settings = document.getElementById('settings');
+    const infoToggle = document.getElementById('info-toggle');
+    const infoPanel = document.getElementById('info-panel');
 
     let duration = 4;
     let brightnessIntensity = 30;
@@ -268,6 +346,7 @@
     let lastPhaseIndex = -1;
     let audioContext = null;
     let settingsVisible = false;
+    let infoVisible = false;
 
     // Load settings from localStorage
     function loadSettings() {
@@ -403,6 +482,12 @@
       settingsToggle.classList.toggle('active', settingsVisible);
     }
 
+    function toggleInfo() {
+      infoVisible = !infoVisible;
+      infoPanel.classList.toggle('visible', infoVisible);
+      infoToggle.classList.toggle('active', infoVisible);
+    }
+
     durationSlider.addEventListener('input', (e) => {
       duration = parseFloat(e.target.value);
       durationValue.textContent = `${duration}s`;
@@ -421,6 +506,7 @@
 
     boxContainer.addEventListener('click', start);
     settingsToggle.addEventListener('click', toggleSettings);
+    infoToggle.addEventListener('click', toggleInfo);
 
     loadSettings();
     setPosition(0, 0);
