@@ -72,11 +72,18 @@
       transition: box-shadow 0.3s ease;
     }
 
-    .phase-label {
+    .box-content {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .phase-label {
       color: var(--text-muted);
       font-size: 13px;
       font-weight: 300;
@@ -85,7 +92,22 @@
       transition: opacity 0.4s ease, color 0.4s ease;
     }
 
-    .box-container:hover .phase-label {
+    .timer-display {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-display.visible {
+      opacity: 1;
+    }
+
+    .box-container:hover .phase-label,
+    .box-container:hover .timer-display {
       color: var(--text-primary);
     }
 
@@ -216,6 +238,33 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .session-presets {
+      display: flex;
+      gap: 8px;
+    }
+
+    .session-preset {
+      padding: 4px 10px;
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .session-preset:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    .session-preset.active {
+      border-color: var(--text-primary);
+      color: var(--text-primary);
+    }
+
     /* Info Toggle */
     .info-toggle {
       position: fixed;
@@ -285,7 +334,10 @@
     <div class="box-container">
       <div class="box"></div>
       <div class="chaser"></div>
-      <div class="phase-label">begin</div>
+      <div class="box-content">
+        <div class="phase-label">begin</div>
+        <div class="timer-display" id="timer-display"></div>
+      </div>
     </div>
   </div>
 
@@ -311,7 +363,16 @@
 
   <div class="settings" id="settings">
     <div class="setting-row">
-      <label>duration</label>
+      <label>session</label>
+      <div class="session-presets">
+        <button class="session-preset active" data-minutes="2">2m</button>
+        <button class="session-preset" data-minutes="5">5m</button>
+        <button class="session-preset" data-minutes="10">10m</button>
+        <button class="session-preset" data-minutes="0">∞</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label>pace</label>
       <input type="range" id="duration" min="3" max="6" step="0.5" value="4">
       <span class="duration-value" id="duration-value">4s</span>
     </div>
@@ -328,6 +389,7 @@
   <script>
     const chaser = document.querySelector('.chaser');
     const phaseLabel = document.querySelector('.phase-label');
+    const timerDisplay = document.getElementById('timer-display');
     const durationSlider = document.getElementById('duration');
     const durationValue = document.getElementById('duration-value');
     const brightnessSlider = document.getElementById('brightness');
@@ -337,16 +399,19 @@
     const settings = document.getElementById('settings');
     const infoToggle = document.getElementById('info-toggle');
     const infoPanel = document.getElementById('info-panel');
+    const sessionPresets = document.querySelectorAll('.session-preset');
 
     let duration = 4;
     let brightnessIntensity = 30;
     let volume = 0.5;
+    let sessionMinutes = 2; // 0 = endless
     let isRunning = false;
     let animationId = null;
     let lastPhaseIndex = -1;
     let audioContext = null;
-    let settingsVisible = false;
+    let settingsVisible = true;
     let infoVisible = false;
+    let startTime = null;
 
     // Load settings from localStorage
     function loadSettings() {
@@ -356,11 +421,16 @@
         duration = s.duration ?? 4;
         brightnessIntensity = s.brightness ?? 30;
         volume = s.volume ?? 0.5;
+        sessionMinutes = s.sessionMinutes ?? 2;
 
         durationSlider.value = duration;
         durationValue.textContent = `${duration}s`;
         brightnessSlider.value = brightnessIntensity;
         volumeSlider.value = volume * 100;
+
+        sessionPresets.forEach(btn => {
+          btn.classList.toggle('active', parseInt(btn.dataset.minutes) === sessionMinutes);
+        });
       }
     }
 
@@ -368,7 +438,8 @@
       localStorage.setItem('boxBreatherSettings', JSON.stringify({
         duration,
         brightness: brightnessIntensity,
-        volume
+        volume,
+        sessionMinutes
       }));
     }
 
@@ -432,14 +503,34 @@
       return -(Math.cos(Math.PI * t) - 1) / 2;
     }
 
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
     function animate() {
       if (!isRunning) return;
 
-      const totalCycleDuration = duration * 4 * 1000;
       const now = performance.now();
-      const cycleProgress = (now % totalCycleDuration) / totalCycleDuration;
+      const elapsed = now - startTime;
+      const totalCycleDuration = duration * 4 * 1000;
+      const cycleProgress = (elapsed % totalCycleDuration) / totalCycleDuration;
       const phaseIndex = Math.floor(cycleProgress * 4);
       const phaseProgress = (cycleProgress * 4) % 1;
+
+      // Check if session has ended
+      if (sessionMinutes > 0) {
+        const sessionMs = sessionMinutes * 60 * 1000;
+        const remaining = Math.max(0, sessionMs - elapsed);
+
+        timerDisplay.textContent = formatTime(remaining / 1000);
+
+        if (remaining <= 0) {
+          endSession();
+          return;
+        }
+      }
 
       const phase = phases[phaseIndex];
       const easedProgress = easeInOutSine(phaseProgress);
@@ -459,20 +550,56 @@
       animationId = requestAnimationFrame(animate);
     }
 
+    function endSession() {
+      isRunning = false;
+      cancelAnimationFrame(animationId);
+      phaseLabel.textContent = 'complete';
+      timerDisplay.classList.remove('visible');
+      document.body.style.backgroundColor = 'hsl(220, 8%, 4%)';
+      setPosition(0, 0);
+      lastPhaseIndex = -1;
+      startTime = null;
+
+      // Reset to "begin" after a moment
+      setTimeout(() => {
+        if (!isRunning) {
+          phaseLabel.textContent = 'begin';
+        }
+      }, 2000);
+    }
+
     function start() {
       if (isRunning) {
         isRunning = false;
         cancelAnimationFrame(animationId);
         phaseLabel.textContent = 'begin';
+        timerDisplay.classList.remove('visible');
         document.body.style.backgroundColor = 'hsl(220, 8%, 4%)';
         setPosition(0, 0);
         lastPhaseIndex = -1;
+        startTime = null;
         return;
       }
 
       initAudio();
+      startTime = performance.now();
       lastPhaseIndex = -1;
       isRunning = true;
+
+      // Hide settings when starting
+      if (settingsVisible) {
+        settingsVisible = false;
+        settings.classList.remove('visible');
+        settingsToggle.classList.remove('active');
+      }
+
+      // Show timer if session has a duration
+      if (sessionMinutes > 0) {
+        timerDisplay.textContent = formatTime(sessionMinutes * 60);
+        timerDisplay.classList.add('visible');
+      }
+
+      playClick(); // Play click for initial inhale
       animate();
     }
 
@@ -508,8 +635,21 @@
     settingsToggle.addEventListener('click', toggleSettings);
     infoToggle.addEventListener('click', toggleInfo);
 
+    sessionPresets.forEach(btn => {
+      btn.addEventListener('click', () => {
+        sessionMinutes = parseInt(btn.dataset.minutes);
+        sessionPresets.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        saveSettings();
+      });
+    });
+
     loadSettings();
     setPosition(0, 0);
+
+    // Show settings on page load
+    settings.classList.add('visible');
+    settingsToggle.classList.add('active');
   </script>
 </body>
 </html>
