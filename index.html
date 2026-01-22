@@ -4,7 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Box Breathing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-base: 4%;
+      --text-primary: rgba(255, 255, 255, 0.6);
+      --text-muted: rgba(255, 255, 255, 0.35);
+      --border-subtle: rgba(255, 255, 255, 0.12);
+      --border-hover: rgba(255, 255, 255, 0.25);
+      --glow-color: rgba(255, 255, 255, 0.4);
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -17,9 +29,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background-color: hsl(0, 0%, 4%);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      transition: background-color 0.3s ease;
+      background-color: hsl(220, 8%, var(--bg-base));
+      font-family: 'Cormorant Garamond', Georgia, serif;
       overflow: hidden;
     }
 
@@ -28,105 +39,182 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 40px;
     }
 
     .box-container {
       position: relative;
-      width: 280px;
-      height: 280px;
+      width: 240px;
+      height: 240px;
+      cursor: pointer;
     }
 
     .box {
       width: 100%;
       height: 100%;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      transition: border-color 0.4s ease;
+    }
+
+    .box-container:hover .box {
+      border-color: var(--border-hover);
     }
 
     .chaser {
       position: absolute;
-      width: 16px;
-      height: 16px;
-      background: #fff;
+      width: 10px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.9);
       border-radius: 50%;
       transform: translate(-50%, -50%);
-      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-      transition: none;
+      box-shadow:
+        0 0 20px var(--glow-color),
+        0 0 40px rgba(255, 255, 255, 0.15);
+      transition: box-shadow 0.3s ease;
     }
 
     .phase-label {
       position: absolute;
-      bottom: -35px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 14px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
+      transform: translate(-50%, -50%);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 300;
+      letter-spacing: 0.25em;
+      text-transform: lowercase;
+      transition: opacity 0.4s ease, color 0.4s ease;
     }
 
+    .box-container:hover .phase-label {
+      color: var(--text-primary);
+    }
+
+    /* Settings Toggle */
+    .settings-toggle {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.25;
+      transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .settings-toggle:hover {
+      opacity: 0.6;
+    }
+
+    .settings-toggle.active {
+      opacity: 0.5;
+      transform: rotate(90deg);
+    }
+
+    .settings-toggle svg {
+      width: 20px;
+      height: 20px;
+      stroke: white;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    /* Settings Panel */
     .settings {
       position: fixed;
-      bottom: 30px;
+      bottom: 28px;
+      right: 76px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      opacity: 0.4;
-      transition: opacity 0.3s ease;
+      align-items: flex-end;
+      gap: 16px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(10px);
+      transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease,
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .settings:hover {
+    .settings.visible {
       opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
     }
 
     .setting-row {
       display: flex;
       align-items: center;
-      gap: 15px;
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 13px;
+      gap: 14px;
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: lowercase;
     }
 
     .setting-row label {
-      min-width: 120px;
+      min-width: 90px;
+      text-align: right;
+      transition: color 0.2s ease;
+    }
+
+    .setting-row:hover label {
+      color: var(--text-primary);
     }
 
     input[type="range"] {
-      width: 120px;
-      height: 4px;
+      width: 100px;
+      height: 1px;
       -webkit-appearance: none;
       appearance: none;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 2px;
+      background: var(--border-subtle);
       outline: none;
+      transition: background 0.2s ease;
+    }
+
+    .setting-row:hover input[type="range"] {
+      background: var(--border-hover);
     }
 
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 14px;
-      height: 14px;
-      background: #fff;
+      width: 10px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.5);
       border-radius: 50%;
       cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: rgba(255, 255, 255, 0.8);
+      transform: scale(1.2);
     }
 
     input[type="range"]::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
-      background: #fff;
+      width: 10px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.5);
       border-radius: 50%;
       cursor: pointer;
       border: none;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    input[type="range"]::-moz-range-thumb:hover {
+      background: rgba(255, 255, 255, 0.8);
+      transform: scale(1.2);
     }
 
     .duration-value {
-      min-width: 30px;
-      text-align: center;
+      min-width: 24px;
+      text-align: left;
+      font-variant-numeric: tabular-nums;
     }
-
   </style>
 </head>
 <body>
@@ -134,22 +222,29 @@
     <div class="box-container">
       <div class="box"></div>
       <div class="chaser"></div>
-      <div class="phase-label">click to start</div>
+      <div class="phase-label">begin</div>
     </div>
   </div>
 
-  <div class="settings">
+  <div class="settings-toggle" id="settings-toggle">
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+    </svg>
+  </div>
+
+  <div class="settings" id="settings">
     <div class="setting-row">
-      <label>Phase duration</label>
+      <label>duration</label>
       <input type="range" id="duration" min="3" max="6" step="0.5" value="4">
       <span class="duration-value" id="duration-value">4s</span>
     </div>
     <div class="setting-row">
-      <label>Brightness pulse</label>
+      <label>brightness</label>
       <input type="range" id="brightness" min="0" max="100" step="5" value="30">
     </div>
     <div class="setting-row">
-      <label>Click volume</label>
+      <label>sound</label>
       <input type="range" id="volume" min="0" max="100" step="5" value="50">
     </div>
   </div>
@@ -162,6 +257,8 @@
     const brightnessSlider = document.getElementById('brightness');
     const volumeSlider = document.getElementById('volume');
     const boxContainer = document.querySelector('.box-container');
+    const settingsToggle = document.getElementById('settings-toggle');
+    const settings = document.getElementById('settings');
 
     let duration = 4;
     let brightnessIntensity = 30;
@@ -170,6 +267,31 @@
     let animationId = null;
     let lastPhaseIndex = -1;
     let audioContext = null;
+    let settingsVisible = false;
+
+    // Load settings from localStorage
+    function loadSettings() {
+      const saved = localStorage.getItem('boxBreatherSettings');
+      if (saved) {
+        const s = JSON.parse(saved);
+        duration = s.duration ?? 4;
+        brightnessIntensity = s.brightness ?? 30;
+        volume = s.volume ?? 0.5;
+
+        durationSlider.value = duration;
+        durationValue.textContent = `${duration}s`;
+        brightnessSlider.value = brightnessIntensity;
+        volumeSlider.value = volume * 100;
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem('boxBreatherSettings', JSON.stringify({
+        duration,
+        brightness: brightnessIntensity,
+        volume
+      }));
+    }
 
     function initAudio() {
       if (!audioContext) {
@@ -186,15 +308,15 @@
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
-      oscillator.frequency.value = 800;
+      oscillator.frequency.value = 600;
       oscillator.type = 'sine';
 
       const now = audioContext.currentTime;
-      gainNode.gain.setValueAtTime(volume * 0.3, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      gainNode.gain.setValueAtTime(volume * 0.2, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
 
       oscillator.start(now);
-      oscillator.stop(now + 0.08);
+      oscillator.stop(now + 0.06);
     }
 
     const phases = [
@@ -205,8 +327,6 @@
     ];
 
     function setPosition(xPercent, yPercent) {
-      const box = document.querySelector('.box');
-      const rect = box.getBoundingClientRect();
       chaser.style.left = `${xPercent}%`;
       chaser.style.top = `${yPercent}%`;
     }
@@ -217,20 +337,16 @@
 
       let brightness;
       if (phaseIndex === 0) {
-        // Inhale: dark to bright
         brightness = minBrightness + (progress * (maxBrightness - minBrightness));
       } else if (phaseIndex === 1) {
-        // Hold after inhale: stay bright
         brightness = maxBrightness;
       } else if (phaseIndex === 2) {
-        // Exhale: bright to dark
         brightness = maxBrightness - (progress * (maxBrightness - minBrightness));
       } else {
-        // Hold after exhale: stay dark
         brightness = minBrightness;
       }
 
-      document.body.style.backgroundColor = `hsl(0, 0%, ${brightness}%)`;
+      document.body.style.backgroundColor = `hsl(220, 8%, ${brightness}%)`;
     }
 
     function easeInOutSine(t) {
@@ -241,7 +357,6 @@
       if (!isRunning) return;
 
       const totalCycleDuration = duration * 4 * 1000;
-      const phaseDuration = duration * 1000;
       const now = performance.now();
       const cycleProgress = (now % totalCycleDuration) / totalCycleDuration;
       const phaseIndex = Math.floor(cycleProgress * 4);
@@ -269,8 +384,8 @@
       if (isRunning) {
         isRunning = false;
         cancelAnimationFrame(animationId);
-        phaseLabel.textContent = 'click to start';
-        document.body.style.backgroundColor = 'hsl(0, 0%, 4%)';
+        phaseLabel.textContent = 'begin';
+        document.body.style.backgroundColor = 'hsl(220, 8%, 4%)';
         setPosition(0, 0);
         lastPhaseIndex = -1;
         return;
@@ -282,21 +397,32 @@
       animate();
     }
 
+    function toggleSettings() {
+      settingsVisible = !settingsVisible;
+      settings.classList.toggle('visible', settingsVisible);
+      settingsToggle.classList.toggle('active', settingsVisible);
+    }
+
     durationSlider.addEventListener('input', (e) => {
       duration = parseFloat(e.target.value);
       durationValue.textContent = `${duration}s`;
+      saveSettings();
     });
 
     brightnessSlider.addEventListener('input', (e) => {
       brightnessIntensity = parseFloat(e.target.value);
+      saveSettings();
     });
 
     volumeSlider.addEventListener('input', (e) => {
       volume = parseFloat(e.target.value) / 100;
+      saveSettings();
     });
 
     boxContainer.addEventListener('click', start);
+    settingsToggle.addEventListener('click', toggleSettings);
 
+    loadSettings();
     setPosition(0, 0);
   </script>
 </body>
